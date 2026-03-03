@@ -1,63 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><title>Exam Environment</title><link rel="stylesheet" href="style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Environment - EduMasters</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        // 🛑 STRICT ANTI-CHEATING: DISABLE BACK BUTTON
+        // This forces the browser to push a fake history state, trapping them on this page.
+        history.pushState(null, null, location.href);
+        window.onpopstate = function () {
+            history.go(1);
+        };
+        
+        // 🛑 WARN ON REFRESH
+        // If they try to hit F5 or the reload button, it stops them
+        window.onbeforeunload = function() {
+            return "If you reload this page, your progress will be lost and your exam may auto-submit. Are you sure?";
+        };
+    </script>
+</head>
 <body style="display:flex; justify-content:center; align-items:center;">
-    <div class="glass-panel" style="width: 100%; max-width: 800px;">
+    
+    <div class="glass-panel" style="width: 100%; max-width: 800px; z-index: 100;">
+        <!-- HEADER: TIMER & QUESTION NUMBER -->
         <div style="display:flex; justify-content:space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 20px;">
-            <h3 id="q-counter">Initializing...</h3><h2 id="timer" style="color: #1dd1a1;">00:00</h2>
+            <h3 id="q-counter" style="color: #ccc;">Initializing...</h3>
+            <h2 id="timer" style="color: #1dd1a1; font-family: monospace; font-size: 2rem; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 8px;">00:00</h2>
         </div>
-        <h2 id="q-text" style="margin-bottom: 25px; line-height: 1.5;">Please wait...</h2>
+        
+        <!-- QUESTION TEXT -->
+        <h2 id="q-text" style="margin-bottom: 25px; line-height: 1.5; font-size: 1.3rem;">Loading secure exam environment...</h2>
+        
+        <!-- MULTIPLE CHOICE OPTIONS -->
         <div id="options"></div>
-        <button id="next-btn" class="btn hidden" style="margin-top: 25px;">Next Question</button>
+        
+        <!-- NEXT BUTTON -->
+        <button id="next-btn" class="btn hidden" style="margin-top: 25px; font-size: 1.1rem; padding: 15px;">Next Question</button>
     </div>
 
-    <script src="config.js"></script>
+    <!-- LOAD CONFIG TO CONNECT TO DATABASE -->
+    <script src="js/config.js"></script>
+    
     <script>
-        document.addEventListener('contextmenu', e => e.preventDefault());
-        document.addEventListener('visibilitychange', () => { if(document.hidden) submitExam(); }); 
+        // 🛑 MORE ANTI-CHEATING CONTROLS
+        document.addEventListener('contextmenu', e => e.preventDefault()); // Disables Right-Click so they can't inspect element
+        
+        // Auto-Submit if they switch tabs to Google answers
+        document.addEventListener('visibilitychange', () => { 
+            if(document.hidden) {
+                alert("🚨 Security Violation: You left the exam tab. Your exam has been automatically submitted to prevent cheating.");
+                submitExam(); 
+            }
+        }); 
 
+        // LOAD STUDENT AND EXAM DATA FROM SESSION
         const student = JSON.parse(sessionStorage.getItem('student'));
         const activeExam = JSON.parse(sessionStorage.getItem('currentExam'));
-        if(!student || !activeExam) window.location.href = 'student.html';
+        
+        // If they try to access exam.html directly without logging in, kick them out
+        if(!student || !activeExam) {
+            window.onbeforeunload = null; // Remove refresh warning
+            window.location.href = 'student.html';
+        }
 
-        let questions = [], currentIdx = 0, score = 0, timeRemaining = activeExam.duration * 60;
+        let questions = [];
+        let currentIdx = 0;
+        let score = 0;
+        let timeRemaining = activeExam.duration * 60; // Convert minutes to seconds
+        let timerInterval;
         
         window.onload = async () => {
+            // 🛑 CHECK IF ALREADY COMPLETED (In case they bypassed the UI block)
+            const { data: subCheck } = await supabaseClient.from('submissions').select('id').eq('exam_id', activeExam.id).eq('student_id', student.id).single();
+            if(subCheck) {
+                alert("You have already completed this exam. Redirecting to dashboard.");
+                window.onbeforeunload = null;
+                window.location.href = 'student.html';
+                return;
+            }
+
+            // LOAD QUESTIONS
             const { data } = await supabaseClient.from('questions').select('*').eq('exam_id', activeExam.id);
             questions = data || [];
-            if(questions.length === 0) { alert("No questions found."); window.location.href = 'student.html'; return; }
-            setInterval(updateTimer, 1000); renderQuestion();
+            
+            if(questions.length === 0) { 
+                alert("No questions found for this exam. Please contact your Tutor or Admin."); 
+                window.onbeforeunload = null;
+                window.location.href = 'student.html'; 
+                return; 
+            }
+            
+            // START EXAM
+            timerInterval = setInterval(updateTimer, 1000); 
+            renderQuestion();
         };
 
         function updateTimer() {
             timeRemaining--;
-            let m = Math.floor(timeRemaining / 60), s = timeRemaining % 60;
-            document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`;
-            if(timeRemaining <= 0) submitExam();
+            let m = Math.floor(timeRemaining / 60);
+            let s = timeRemaining % 60;
+            
+            // Add a zero in front of single-digit seconds (e.g. 09 instead of 9)
+            let displayTime = `${m}:${s < 10 ? '0' : ''}${s}`;
+            document.getElementById('timer').innerText = displayTime;
+            
+            // visual warning under 5 minutes
+            if(timeRemaining < 300) { 
+                document.getElementById('timer').style.color = '#ff6b6b';
+                document.getElementById('timer').style.boxShadow = '0 0 10px rgba(255, 107, 107, 0.5)';
+            }
+
+            // Auto-submit when time hits 0
+            if(timeRemaining <= 0) {
+                clearInterval(timerInterval);
+                alert("⏳ Time is up! Your exam is being submitted automatically.");
+                submitExam();
+            }
         }
 
         function renderQuestion() {
-            if(currentIdx >= questions.length) return submitExam();
+            if(currentIdx >= questions.length) {
+                submitExam();
+                return;
+            }
+            
             const q = questions[currentIdx];
+            
             document.getElementById('q-counter').innerText = `Question ${currentIdx + 1} of ${questions.length}`;
             document.getElementById('q-text').innerText = q.question_text;
-            document.getElementById('options').innerHTML = ['A','B','C','D'].map(opt => `<label style="display:block; background:rgba(0,0,0,0.3); padding:18px; border-radius:10px; margin-bottom:12px; cursor:pointer; border: 1px solid rgba(255,255,255,0.1);"><input type="radio" name="ans" value="${opt}"> ${opt}. ${q['option_'+opt.toLowerCase()]}</label>`).join('');
             
-            const btn = document.getElementById('next-btn'); btn.classList.remove('hidden');
+            // Generate clickable options
+            document.getElementById('options').innerHTML = ['A','B','C','D'].map(opt => `
+                <label style="display:flex; align-items:center; background:rgba(0,0,0,0.3); padding:18px; border-radius:10px; margin-bottom:12px; cursor:pointer; border: 1px solid rgba(255,255,255,0.1); font-size: 1.1rem; transition: background 0.2s;">
+                    <input type="radio" name="ans" value="${opt}" style="transform: scale(1.5); margin-right: 15px; margin-bottom: 0;"> 
+                    <span><strong style="color:#ffb142;">${opt}.</strong> ${q['option_'+opt.toLowerCase()]}</span>
+                </label>
+            `).join('');
+            
+            // Next button logic
+            const btn = document.getElementById('next-btn'); 
+            btn.classList.remove('hidden');
             btn.innerText = currentIdx === questions.length - 1 ? "Submit & Auto-Grade" : "Next Question";
+            
             btn.onclick = () => {
                 const sel = document.querySelector('input[name="ans"]:checked');
-                if(!sel) return alert("Select an answer");
+                if(!sel) return alert("Please select an answer to continue.");
+                
+                // Grade the question silently in the background
                 if(sel.value === q.correct_answer) score++;
-                currentIdx++; renderQuestion();
+                
+                currentIdx++; 
+                renderQuestion();
             };
         }
 
         async function submitExam() {
-            document.body.innerHTML = '<h1 style="color:white; text-align:center; margin-top:40vh;">Grading Submission...</h1>';
+            clearInterval(timerInterval);
+            window.onbeforeunload = null; // Remove the refresh warning since they are done!
+            
+            // Show a grading screen so they know it is saving
+            document.body.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; text-align:center; width: 100%;">
+                    <h1 style="color:#1dd1a1; text-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 20px;">Grading Submission...</h1>
+                    <p style="color:#fff; font-size: 1.2rem;">Please wait while we securely save your results.</p>
+                </div>
+            `;
+            
+            // Calculate standard Legon GPA using the function from config.js
             const ugGrading = calculateUGGrade(score, questions.length);
-            await supabaseClient.from('submissions').insert([{ exam_id: activeExam.id, student_id: student.id, score: score, max_score: questions.length, grade: ugGrading.grade, gpa_points: ugGrading.points }]);
-            sessionStorage.removeItem('currentExam'); window.location.href = 'student.html';
+
+            // Save to database
+            await supabaseClient.from('submissions').insert([{ 
+                exam_id: activeExam.id, 
+                student_id: student.id, 
+                score: score, 
+                max_score: questions.length, 
+                grade: ugGrading.grade, 
+                gpa_points: ugGrading.points 
+            }]);
+
+            // Clear session memory and send them back to dashboard
+            sessionStorage.removeItem('currentExam'); 
+            window.location.href = 'student.html';
         }
     </script>
 </body>
