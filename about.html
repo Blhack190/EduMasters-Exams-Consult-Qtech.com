@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About The Founder - Quist Technologies</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* This hides the left Ad Sidebar ONLY on the About Page to keep it clean */
+        .ad-sidebar { display: none !important; }
+        
+        /* This centers the About Page perfectly since the sidebar is hidden */
+        body { padding-left: 0 !important; }
+
+        /* Styling for your Portrait Picture */
+        .founder-img-wrapper {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .founder-img {
+            width: 180px;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 15px;
+            border: 4px solid #ffb142;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+        }
+        .founder-img:hover {
+            transform: scale(1.05);
+            border-color: #1dd1a1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="brand-header">
+        <img src="logo1.png" class="ug-logo" alt="UG Logo">
+        <h1>ABOUT ME</h1>
+    </div>
+
+    <div class="container" style="max-width: 1000px; z-index: 10;">
+        
+        <!-- HERO INTRODUCTION -->
+        <div class="about-hero">
+            <h1 class="about-name">Charles Albert Quist</h1>
+            <div class="about-title">Founder & CEO, Quist Technologies</div>
+            
+            <!-- 🖼️ YOUR PICTURE HERE: Replace the src link with your actual photo link! -->
+            <div class="founder-img-wrapper">
+                <img src="bday.jpg" alt="Charles Albert Quist" class="founder-img">
+            </div>
+
+            <p style="font-size: 1.1rem; line-height: 1.8; color: #fff; max-width: 800px; margin: 0 auto;">
+                A technology entrepreneur, digital strategist, and IT specialist. Charles is passionate about building intelligent digital systems that empower businesses to scale and students to excel academically. His work integrates technology, strategy, and innovation to create scalable, performance-driven solutions.
+            </p>
+        </div>
+
+        <!-- TWO COLUMN GRID FOR CONTENT -->
+        <div class="grid">
+            
+            <!-- EDUCATION & CERTS (BLUE THEME) -->
+            <div class="about-card sec-edu">
+                <h3>Education & Certifications</h3>
+                <p>Charles has pursued academic studies at the <strong>University of Ghana (Legon)</strong>, with a background in Public Administration and ongoing Bachelor of Science studies in Administration. His academic foundation strengthens his expertise in leadership, governance, and organizational systems.</p>
+                <p>He is also advancing his education at <strong>Brigham Young University (BYU)</strong>, expanding his global perspective and leadership capacity.</p>
+                <p>In addition to his administrative expertise, Charles holds specialized technical training in cloud computing and IT from Allison College. He holds the following elite credentials:</p>
+                <ul>
+                    <li>2x Oracle Cloud Infrastructure (OCI) Certified</li>
+                    <li>Oracle Cloud Infrastructure AI Certified</li>
+                </ul>
+                <p style="font-size:0.85rem; color:#aaa; margin-top:10px;">
+                    <em>These certifications validate his expertise in cloud architecture, enterprise infrastructure, and artificial intelligence solutions within Oracle’s global cloud ecosystem.</em>
+                </p>
+            </div>
+
+            <!-- QUIST TECHNOLOGIES (ORANGE THEME) -->
+            <div class="about-card sec-tech">
+                <h3>Founder of Quist Technologies</h3>
+                <p>As Founder and CEO, Charles leads a modern digital solutions company focused on delivering premium, future-ready systems tailored to startups, SMEs, and growing enterprises. Specialized services include:</p>
+                <ul>
+                    <li>Website Development & E-Commerce Solutions</li>
+                    <li>IT Infrastructure & Networking</li>
+                    <li>Cloud Solutions & Digital Systems</li>
+                    <li>Social Media Management</li>
+                    <li>Digital Branding & Creative Design</li>
+                    <li>Technology Consulting</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="grid">
+
+            <!-- EDUMASTERS VISION (GREEN THEME) -->
+            <div class="about-card sec-vision">
+                <h3>The Vision Behind EduMasters</h3>
+                <p>Recognizing the academic pressures faced by university students, Charles founded <strong>EduMasters Exams Consult</strong>—an advanced online examination and structured study platform designed to modernize exam preparation.</p>
+                <p><strong>The platform provides:</strong></p>
+                <ul>
+                    <li>Timed Interactive Assessments (IAs) & Exams</li>
+                    <li>Downloadable Past Questions</li>
+                    <li>Instant Grading & Performance Feedback</li>
+                    <li>Integrated PDF Study Tools</li>
+                    <li>Premium Study Groups for Legon & UPSA Students</li>
+                </ul>
+                <p style="margin-top: 15px; font-weight: bold; color: #1dd1a1; font-size: 1.1rem;">
+                    Mission: To help students study smarter, perform confidently, and achieve measurable academic success through structured digital learning systems.
+                </p>
+            </div>
+
+            <!-- LEADERSHIP PHILOSOPHY (PURPLE THEME) -->
+            <div class="about-card sec-lead">
+                <h3>Leadership Philosophy & Vision</h3>
+                <p>Charles believes technology must create a measurable impact. His work is guided by three core principles:</p>
+                <ul>
+                    <li><strong>Innovation:</strong> Building future-ready solutions.</li>
+                    <li><strong>Excellence:</strong> Delivering premium, secure systems.</li>
+                    <li><strong>Impact:</strong> Creating lasting value for society.</li>
+                </ul>
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;">
+                <h4 style="color:#6c5ce7; margin-bottom: 10px;">The Ultimate Vision</h4>
+                <p>To become a leading African technology innovator shaping digital transformation across education and enterprise.</p>
+            </div>
+
+        </div>
+
+        <!-- RETURN BUTTON -->
+        <div style="text-align: center; margin-top: 20px; margin-bottom: 100px;">
+            <button class="btn btn-blue" style="width: auto; padding: 15px 40px; font-size: 1.1rem;" onclick="window.location.href='index.html'">🔙 Return to Platform</button>
+        </div>
+
+    </div>
+
+    <!-- Loads Background UI, Ticker, Spotify, Ads, and Bot automatically -->
+    <script src="js/config.js"></script>
+</body>
+</html>
