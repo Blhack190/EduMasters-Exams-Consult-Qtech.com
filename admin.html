@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Master Admin Portal</title>
-    <link rel="stylesheet" href="style.css"> <!-- Make sure this points to your CSS -->
+    <link rel="stylesheet" href="style.css"> 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -109,8 +109,8 @@
                 <button class="btn btn-danger" style="margin-top: 10px; margin-bottom: 15px;" onclick="resetPassword()">Reset Tutor Pass</button>
                 
                 <input type="text" id="stu_index" placeholder="Student Index Number">
-                <input type="email" id="new_stu_email" placeholder="New Email">
-                <input type="text" id="new_stu_phone" placeholder="New Phone">
+                <input type="email" id="new_stu_email" placeholder="New Email Address">
+                <input type="text" id="new_stu_phone" placeholder="New Phone Number">
                 <button class="btn" style="background:#ffb142; color:#000;" onclick="resetStudent()">Update Student Login</button>
 
                 <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
@@ -124,6 +124,18 @@
                 
                 <h3 style="color:#1dd1a1; font-size: 1rem;">🤖 AI Prompt Generator</h3>
                 <textarea readonly style="height:60px; font-size:0.75rem; background:#222; color:#1dd1a1; margin-bottom: 5px;">"Act as a database admin. Generate a Supabase SQL insert script for 50 multiple choice questions about [TOPIC]. Table: questions (exam_id=YOUR_ID, type='mcq', question_text, option_a, option_b, option_c, option_d, correct_answer)."</textarea>
+            </div>
+        </div>
+
+        <!-- NEW: MANUAL MOMO VERIFICATION DASHBOARD -->
+        <div class="glass-panel" style="border: 2px solid #ffb142;">
+            <h3 style="color:#ffb142;">💰 Pending MoMo Payments</h3>
+            <p style="font-size:0.8rem; margin-bottom:15px;">Verify student screenshots and approve their premium access (Retakes/Downloads).</p>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>Student</th><th>Request</th><th>Receipt</th><th>Action</th></tr></thead>
+                    <tbody id="admin-payments"></tbody>
+                </table>
             </div>
         </div>
 
@@ -199,7 +211,26 @@
             const { data: anns } = await supabaseClient.from('announcements').select('*').eq('school_id', school.id).order('posted_at', { ascending: false });
             if(anns) anns.forEach(a => document.getElementById('admin-announcements').innerHTML += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.1);"><span style="font-size:0.8rem;">${a.message}</span><button class="btn btn-danger" style="width:auto; padding:3px 8px;" onclick="deleteAnnouncement(${a.id})">🗑️</button></div>`);
 
-            // 5. LOAD RESULTS, TUTORS, STUDENTS
+            // 5. LOAD PENDING PAYMENTS (MANUAL MOMO)
+            const { data: payments } = await supabaseClient.from('payments').select('*, students(name, index_number), exams(title)').eq('status', 'pending');
+            const payBody = document.getElementById('admin-payments'); payBody.innerHTML = '';
+            if(payments && payments.length > 0) {
+                payments.forEach(p => {
+                    payBody.innerHTML += `<tr>
+                        <td><strong>${p.students.name}</strong><br><small>${p.students.index_number}</small></td>
+                        <td>${p.payment_type.toUpperCase()}<br><small>${p.exams.title}</small></td>
+                        <td><a href="${p.receipt_url}" target="_blank" style="color:#1dd1a1; font-weight:bold;">📸 View Receipt</a></td>
+                        <td style="display:flex; gap:5px;">
+                            <button class="btn" style="background:#1dd1a1; color:#000; padding:5px; width:auto;" onclick="approvePayment(${p.id})">✅</button>
+                            <button class="btn btn-danger" style="padding:5px; width:auto;" onclick="rejectPayment(${p.id})">❌</button>
+                        </td>
+                    </tr>`;
+                });
+            } else {
+                payBody.innerHTML = '<tr><td colspan="4">No pending payments.</td></tr>';
+            }
+
+            // 6. LOAD RESULTS, TUTORS, STUDENTS
             const { data: subs } = await supabaseClient.from('submissions').select('*, students(index_number), exams(title, courses(course_code, school_id))');
             if(subs) subs.filter(s => s.exams.courses.school_id == school.id).forEach(s => { allSubs.push(s); document.getElementById('admin-subs').innerHTML += `<tr><td>${s.students.index_number}</td><td>${s.exams.courses.course_code}</td><td>${s.exams.title}</td><td>${s.score}/${s.max_score}</td><td><strong style="color:#1dd1a1;">${s.grade}</strong></td><td>${new Date(s.submitted_at).toLocaleDateString()}</td></tr>`; });
 
@@ -224,38 +255,37 @@
             }
         }
 
-        // COURSES
+        // MOMO APPROVAL LOGIC
+        async function approvePayment(id) { await supabaseClient.from('payments').update({ status: 'approved' }).eq('id', id); alert("Approved! Student now has access."); location.reload(); }
+        async function rejectPayment(id) { if(confirm("Reject receipt?")) { await supabaseClient.from('payments').delete().eq('id', id); location.reload(); } }
+
+        // COURSES & GROUPS
         async function loadDefaultCourses() { const c = [{ school_id: school.id, course_code: 'UGBS203', course_name: 'Commercial Law', credit_hours: 3 }, { school_id: school.id, course_code: 'LAW301', course_name: 'Constitutional Law', credit_hours: 3 }, { school_id: school.id, course_code: 'ECO101', course_name: 'Economics', credit_hours: 3 }, { school_id: school.id, course_code: 'ACC101', course_name: 'Accounting 1', credit_hours: 3 }, { school_id: school.id, course_code: 'MGT101', course_name: 'Prin. of Management', credit_hours: 3 }, { school_id: school.id, course_code: 'PAD101', course_name: 'Public Setting', credit_hours: 3 }, { school_id: school.id, course_code: 'OMGT201', course_name: 'Office Management', credit_hours: 3 }, { school_id: school.id, course_code: 'PAD201', course_name: 'Public Admin', credit_hours: 3 }, { school_id: school.id, course_code: 'FIN201', course_name: 'Public Finance', credit_hours: 3 }, { school_id: school.id, course_code: 'ENV201', course_name: 'Environmental Mgt', credit_hours: 3 }]; await supabaseClient.from('courses').insert(c); alert("Loaded!"); location.reload(); }
         async function createCourse() { await supabaseClient.from('courses').insert([{ school_id: school.id, course_code: document.getElementById('c_code').value.toUpperCase(), course_name: document.getElementById('c_name').value, credit_hours: parseInt(document.getElementById('c_credits').value) }]); location.reload(); }
         async function deleteCourse(id) { if(confirm("🚨 Delete course and all exams/grades attached?")) { await supabaseClient.from('courses').delete().eq('id', id); location.reload(); } }
-
-        // GROUPS
         async function createGroup() { const n = document.getElementById('g_name').value.trim(); if(!n) return; const req = document.getElementById('g_req_code').checked; const newCode = Math.random().toString(36).substring(2, 8).toUpperCase(); await supabaseClient.from('study_groups').insert([{ school_id: school.id, group_name: n, access_code: newCode, requires_code: req }]); alert(`Created! Code: ${newCode}`); location.reload(); }
         async function deleteGroup(id, name) { if(confirm(`Delete '${name}' and its students/exams?`)) { await supabaseClient.from('study_groups').delete().eq('id', id); location.reload(); } }
-        async function toggleGroupLock(id, cur) { await supabaseClient.from('study_groups').update({ requires_code: !cur }).eq('id', id); alert(`Lock status updated!`); location.reload(); }
+        async function toggleGroupLock(id, cur) { await supabaseClient.from('study_groups').update({ requires_code: !cur }).eq('id', id); location.reload(); }
 
-        // TUTORS
+        // ASSESSMENTS & TUTORS
         async function createTutor() { const n = document.getElementById('t_name').value, e = document.getElementById('t_email').value, p = document.getElementById('t_pass').value, g = document.getElementById('t_group').value; if(!n||!e||!p) return; let pl = { school_id: school.id, name: n, email: e, password: p, is_first_login: true }; if(g) pl.group_id = g; await supabaseClient.from('tutors').insert([pl]); alert(`Tutor Created!`); location.reload(); }
         async function adminTutorAccess() { let { data: master } = await supabaseClient.from('tutors').select('*').eq('email', `admin@${school.id}.com`).single(); if(!master) { const { data: n } = await supabaseClient.from('tutors').insert([{ school_id: school.id, name: 'Admin Master', email: `admin@${school.id}.com`, password: 'bypass', is_first_login: false }]).select().single(); master = n; } sessionStorage.setItem('tutor', JSON.stringify(master)); window.location.href = 'tutor.html'; }
-        async function resetPassword() { await supabaseClient.from('tutors').update({ password: document.getElementById('reset_pass').value, is_first_login: true }).eq('email', document.getElementById('reset_email').value); alert("Tutor Password Reset!"); }
-        async function revokeTutor(id, n) { if(confirm(`Delete ${n}?`)) { await supabaseClient.from('tutors').delete().eq('id', id); location.reload(); } }
-
-        // ASSESSMENTS & QUESTIONS
         function toggleAssType() { const t = document.getElementById('a_type').value; document.getElementById('a_duration').classList.toggle('hidden', t==='Assignment'); document.getElementById('a_desc').classList.toggle('hidden', t!=='Assignment'); }
         async function createAssessment() { const t = document.getElementById('a_type').value; const selectedGroup = document.getElementById('a_group').value; const finalGroupId = selectedGroup === "GLOBAL" ? null : selectedGroup; const daysValid = parseInt(document.getElementById('a_days').value) || 30; let expiryDate = new Date(); expiryDate.setDate(expiryDate.getDate() + daysValid); if(t === 'Assignment') { await supabaseClient.from('assignments').insert([{ course_id: document.getElementById('a_course').value, title: document.getElementById('a_title').value, description: document.getElementById('a_desc').value, due_date: expiryDate.toISOString(), expires_at: expiryDate.toISOString(), group_id: finalGroupId }]); } else { await supabaseClient.from('exams').insert([{ course_id: document.getElementById('a_course').value, title: document.getElementById('a_title').value, duration_minutes: document.getElementById('a_duration').value, exam_type: t, expires_at: expiryDate.toISOString(), group_id: finalGroupId }]); } alert("Assessment Created!"); location.reload(); }
         async function deleteAssessment(table, id) { if(confirm("Permanently delete this?")) { await supabaseClient.from(table).delete().eq('id', id); location.reload(); } }
         async function addQuestion() { await supabaseClient.from('questions').insert([{ exam_id: document.getElementById('q_exam').value, type: 'mcq', question_text: document.getElementById('q_text').value, option_a: document.getElementById('q_a').value, option_b: document.getElementById('q_b').value, option_c: document.getElementById('q_c').value, option_d: document.getElementById('q_d').value, correct_answer: document.getElementById('q_ans').value }]); alert("Added!"); document.getElementById('q_text').value = ''; }
         async function extendTime() { const e = document.getElementById('activeExamsList').value, t = parseInt(document.getElementById('extra_time').value); const { data: c } = await supabaseClient.from('exams').select('duration_minutes').eq('id', e).single(); await supabaseClient.from('exams').update({ duration_minutes: c.duration_minutes + t }).eq('id', e); alert(`Time Added!`); location.reload(); }
         
-        // STUDENTS & ANNOUNCEMENTS
+        // SECURITY & STUDENTS
         async function postAnnouncement() { await supabaseClient.from('announcements').insert([{ school_id: school.id, message: document.getElementById('ann_text').value.trim() }]); location.reload(); }
         async function deleteAnnouncement(id) { await supabaseClient.from('announcements').delete().eq('id', id); location.reload(); }
+        async function resetPassword() { await supabaseClient.from('tutors').update({ password: document.getElementById('reset_pass').value, is_first_login: true }).eq('email', document.getElementById('reset_email').value); alert("Tutor Password Reset!"); }
         async function resetStudent() { const idx = document.getElementById('stu_index').value.trim(), em = document.getElementById('new_stu_email').value.trim(), ph = document.getElementById('new_stu_phone').value.trim(); if(!idx||!em||!ph) return; await supabaseClient.from('students').update({ email: em, phone_number: ph }).eq('index_number', idx); alert("Updated!"); location.reload(); }
-        async function revokeStudent(id, n) { if(confirm(`Delete ${n}?`)) { await supabaseClient.from('students').delete().eq('id', id); location.reload(); } }
         async function unenrollStudent() { const idx = document.getElementById('unenroll_index').value.trim(); const courseId = document.getElementById('unenroll_course').value; if(!idx || !courseId) return; const { data: stu } = await supabaseClient.from('students').select('id').eq('index_number', idx).single(); if(!stu) return alert("Student not found!"); await supabaseClient.from('student_courses').delete().eq('student_id', stu.id).eq('course_id', courseId); alert("Removed from course!"); location.reload(); }
+        async function revokeStudent(id, n) { if(confirm(`Delete ${n}?`)) { await supabaseClient.from('students').delete().eq('id', id); location.reload(); } }
+        async function revokeTutor(id, n) { if(confirm(`Delete ${n}?`)) { await supabaseClient.from('tutors').delete().eq('id', id); location.reload(); } }
         
-        // EXPORTS
-        function exportResults() { if(allSubs.length === 0) return; let csv = "Index,Course,Assessment,Score,Grade\n"; allSubs.forEach(s => csv += `${s.students.index_number},${s.exams.courses.course_code},${s.exams.title},${s.score},${s.grade}\n`); const a = document.createElement('a'); a.href = window.URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `Results.csv`; a.click(); }
+        function exportResults() { let csv = "Index,Course,Assessment,Score,Grade\n"; allSubs.forEach(s => csv += `${s.students.index_number},${s.exams.courses.course_code},${s.exams.title},${s.score},${s.grade}\n`); const a = document.createElement('a'); a.href = window.URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `Results.csv`; a.click(); }
     </script>
 </body>
 </html>
