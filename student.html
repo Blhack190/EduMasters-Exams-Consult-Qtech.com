@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><title>Student Portal</title><link rel="stylesheet" href="css/style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<html lang="en"><head><title>Student Portal</title><link rel="stylesheet" href="style.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
 <body>
     <div class="reader-modal" id="readerModal"><div class="reader-header"><h3 id="reader-title">Reading</h3><button class="btn btn-danger" style="width:auto; padding:5px 15px; margin:0;" onclick="document.getElementById('readerModal').classList.remove('active'); document.getElementById('reader-frame').src='';">Close X</button></div><div class="reader-content"><iframe id="reader-frame" src=""></iframe></div></div>
     
@@ -43,7 +43,7 @@
         </div>
     </div>
 
-    <script src="js/config.js"></script>
+    <script src="config.js"></script>
     <script>
         const student = JSON.parse(sessionStorage.getItem('student')); if(!student) window.location.href = 'index.html';
         let enrolledCourseIds = []; let pendingAction = null;
@@ -131,3 +131,4 @@
     </script>
 </body>
 </html>
+
