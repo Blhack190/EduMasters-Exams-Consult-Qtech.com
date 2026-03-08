@@ -31,7 +31,7 @@
                 <input type="text" id="t_name" placeholder="Tutor Name"><input type="email" id="t_email" placeholder="Tutor Email">
                 <select id="t_group"><option value="">-- Assign to Group (Optional) --</option></select>
                 <div style="display:flex; gap:10px;"><input type="text" id="t_pass" placeholder="Password" readonly><button class="btn btn-danger" style="width:auto;" onclick="document.getElementById('t_pass').value = Math.random().toString(36).slice(-8)+'@';">Generate</button></div>
-                <button class="btn" style="background:#1dd1a1;" onclick="createTutor()">Create Tutor</button>
+                <button class="btn" style="background:#1dd1a1;" onclick="createTutor()">Create Tutor Account</button>
 
                 <hr style="border-color: rgba(255,255,255,0.2); margin:15px 0;">
                 <h3 style="color:#ff6b6b;">🗑️ Manage Courses</h3>
@@ -64,6 +64,16 @@
                 <input type="number" id="a_duration" placeholder="Duration in Mins (MCQ only)">
                 <textarea id="a_desc" class="hidden" placeholder="Assignment Instructions"></textarea>
                 <button class="btn btn-blue" onclick="createAssessment()">Create Assessment</button>
+
+                <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
+                
+                <!-- ADMIN MATERIAL UPLOADER (TARGETED) -->
+                <h3 style="color:#1dd1a1;">📤 Upload Study Materials</h3>
+                <select id="m_course"><option value="">Loading Courses...</option></select>
+                <select id="m_group"><option value="GLOBAL">🌐 Global (All Groups)</option></select>
+                <input type="text" id="m_title" placeholder="Material Title (e.g. Week 1 Slides)">
+                <input type="url" id="m_link" placeholder="Download Link (Google Drive)">
+                <button class="btn" style="background:#1dd1a1; color:#000;" onclick="adminUploadMaterial()">Upload Material</button>
             </div>
         </div>
 
@@ -119,11 +129,6 @@
                 <input type="text" id="unenroll_index" placeholder="Student Index Number">
                 <select id="unenroll_course"><option value="">Loading Courses...</option></select>
                 <button class="btn btn-blue" onclick="unenrollStudent()">Remove from Course</button>
-
-                <hr style="border-color: rgba(255,255,255,0.2); margin: 15px 0;">
-                
-                <h3 style="color:#1dd1a1; font-size: 1rem;">🤖 AI Prompt Generator</h3>
-                <textarea readonly style="height:60px; font-size:0.75rem; background:#222; color:#1dd1a1; margin-bottom: 5px;">"Act as a database admin. Generate a Supabase SQL insert script for 50 multiple choice questions about [TOPIC]. Table: questions (exam_id=YOUR_ID, type='mcq', question_text, option_a, option_b, option_c, option_d, correct_answer)."</textarea>
             </div>
         </div>
 
@@ -175,6 +180,7 @@
                 groups.forEach(g => { 
                     document.getElementById('t_group').innerHTML += `<option value="${g.id}">${g.group_name}</option>`; 
                     document.getElementById('a_group').innerHTML += `<option value="${g.id}">🎯 Target: ${g.group_name}</option>`; 
+                    document.getElementById('m_group').innerHTML += `<option value="${g.id}">🎯 Target: ${g.group_name}</option>`; 
                     let lockStatus = g.requires_code ? "<span style='color:#ff6b6b;'>🔒 Locked</span>" : "<span style='color:#1dd1a1;'>🔓 Open</span>"; 
                     grpBody.innerHTML += `<tr><td><strong>${g.group_name}</strong><br><small style="color:#1dd1a1;">Code: ${g.access_code}</small> | <small>${lockStatus}</small></td><td style="display:flex; gap:5px; flex-wrap:wrap;"><button class="btn" style="background:#0984e3; color:#fff; padding:5px; width:auto;" onclick="toggleGroupLock(${g.id}, ${g.requires_code})">🔐</button><button class="btn btn-danger" style="padding:5px; width:auto;" onclick="deleteGroup(${g.id}, '${g.group_name}')">🗑️</button></td></tr>`; 
                 });
@@ -185,6 +191,7 @@
             if(courses) {
                 courses.forEach(c => { 
                     document.getElementById('a_course').innerHTML += `<option value="${c.id}">${c.course_code}</option>`; 
+                    document.getElementById('m_course').innerHTML += `<option value="${c.id}">${c.course_code}</option>`; 
                     document.getElementById('unenroll_course').innerHTML += `<option value="${c.id}">${c.course_code}</option>`;
                     document.getElementById('admin-courses').innerHTML += `<tr><td><strong>${c.course_code}</strong>: ${c.course_name}</td><td><button class="btn btn-danger" style="padding:5px;" onclick="deleteCourse(${c.id})">🗑️</button></td></tr>`;
                 });
@@ -246,18 +253,21 @@
             });
         };
 
-        // STUDENT SEARCH
-        function searchStudent() {
-            let filter = document.getElementById('search_stu').value.toLowerCase();
-            let rows = document.getElementsByClassName('stu-row');
-            for(let i=0; i<rows.length; i++) {
-                rows[i].style.display = rows[i].innerText.toLowerCase().includes(filter) ? "" : "none";
-            }
-        }
+        // SEARCH
+        function searchStudent() { let filter = document.getElementById('search_stu').value.toLowerCase(); let rows = document.getElementsByClassName('stu-row'); for(let i=0; i<rows.length; i++) { rows[i].style.display = rows[i].innerText.toLowerCase().includes(filter) ? "" : "none"; } }
 
-        // MOMO APPROVAL LOGIC
+        // PAYMENTS
         async function approvePayment(id) { await supabaseClient.from('payments').update({ status: 'approved' }).eq('id', id); alert("Approved! Student now has access."); location.reload(); }
         async function rejectPayment(id) { if(confirm("Reject receipt?")) { await supabaseClient.from('payments').delete().eq('id', id); location.reload(); } }
+
+        // ADMIN MATERIAL UPLOAD
+        async function adminUploadMaterial() {
+            const c_id = document.getElementById('m_course').value; const title = document.getElementById('m_title').value; const link = document.getElementById('m_link').value;
+            const g = document.getElementById('m_group').value === "GLOBAL" ? null : document.getElementById('m_group').value;
+            if(!c_id || !title || !link) return alert("Fill all fields!");
+            await supabaseClient.from('materials').insert([{ course_id: c_id, title: title, file_link: link, group_id: g }]); 
+            alert("Material Uploaded!"); location.reload();
+        }
 
         // COURSES & GROUPS
         async function loadDefaultCourses() { const c = [{ school_id: school.id, course_code: 'UGBS203', course_name: 'Commercial Law', credit_hours: 3 }, { school_id: school.id, course_code: 'LAW301', course_name: 'Constitutional Law', credit_hours: 3 }, { school_id: school.id, course_code: 'ECO101', course_name: 'Economics', credit_hours: 3 }, { school_id: school.id, course_code: 'ACC101', course_name: 'Accounting 1', credit_hours: 3 }, { school_id: school.id, course_code: 'MGT101', course_name: 'Prin. of Management', credit_hours: 3 }, { school_id: school.id, course_code: 'PAD101', course_name: 'Public Setting', credit_hours: 3 }, { school_id: school.id, course_code: 'OMGT201', course_name: 'Office Management', credit_hours: 3 }, { school_id: school.id, course_code: 'PAD201', course_name: 'Public Admin', credit_hours: 3 }, { school_id: school.id, course_code: 'FIN201', course_name: 'Public Finance', credit_hours: 3 }, { school_id: school.id, course_code: 'ENV201', course_name: 'Environmental Mgt', credit_hours: 3 }]; await supabaseClient.from('courses').insert(c); alert("Loaded!"); location.reload(); }
