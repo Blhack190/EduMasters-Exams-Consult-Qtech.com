@@ -237,5 +237,3 @@ function botFinalize(type) {
                 location.reload();
             }
         }
-
-
