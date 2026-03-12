@@ -1,3 +1,65 @@
+// =========================================================
+// 🚧 MASTER MAINTENANCE MODE SWITCH & SMART TIMER 🚧
+// =========================================================
+const MAINTENANCE_MODE = true; // Change to 'true' to lock the entire website!
+
+// Set the exact Date and Time the upgrade will finish (e.g., "2024-03-01T15:00:00")
+// Format is: YYYY-MM-DDTHH:MM:SS. Leave it as "" if you don't want a timer.
+const MAINTENANCE_END_TIME = "2026-03-20T20:30:00"; 
+
+if (MAINTENANCE_MODE) {
+    document.addEventListener("DOMContentLoaded", () => {
+        // 1. Lock the screen and inject the Maintenance UI
+        document.body.innerHTML = `
+            <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; background:linear-gradient(135deg, #0f2027, #203a43, #2c5364); color:#fff; text-align:center; font-family:'Poppins', sans-serif; padding: 20px; z-index: 999999; position: fixed; top: 0; left: 0; width: 100%;">
+                <h1 style="color:#ffb142; font-size: 3.5rem; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">🚧 SYSTEM UPGRADE 🚧</h1>
+                <p style="font-size: 1.2rem; max-width: 600px; line-height: 1.6; margin-bottom: 20px;">The EduMasters platform is currently undergoing scheduled maintenance to bring you new features and better security.</p>
+                
+                <!-- TIMER BOX (Hidden by default unless a time is set) -->
+                <div id="maint-timer-box" style="display:none; background: rgba(0,0,0,0.5); padding: 20px 40px; border-radius: 15px; border: 2px solid #1dd1a1; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                    <h3 style="color:#1dd1a1; margin-bottom: 10px; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; font-size: 0.9rem;">Estimated Time Remaining</h3>
+                    <div id="maint-timer" style="font-size: 2.5rem; font-weight: bold; font-family: monospace; color: #fff;">00:00:00</div>
+                </div>
+
+                <h3 style="color:#ff6b6b; margin-bottom: 20px;">Please check back soon!</h3>
+                <p style="margin-top: 20px; color:#1dd1a1; font-weight:bold; letter-spacing: 1px;">Powered by Quist Technologies</p>
+            </div>
+        `;
+
+        // 2. Start the Countdown Logic if an end time is provided
+        if(MAINTENANCE_END_TIME !== "") {
+            document.getElementById('maint-timer-box').style.display = 'block';
+            const targetDate = new Date(MAINTENANCE_END_TIME).getTime();
+
+            const mTimer = setInterval(() => {
+                const now = new Date().getTime(); // Gets the student's exact system time
+                const distance = targetDate - now;
+
+                if(distance < 0) {
+                    clearInterval(mTimer);
+                    document.getElementById('maint-timer').innerText = "SYSTEM REBOOTING...";
+                    document.getElementById('maint-timer').style.color = "#ffb142";
+                    
+                    // Auto-refresh the page when time is up. 
+                    // If you (Admin) changed MAINTENANCE_MODE to false, they will instantly get back in!
+                    setTimeout(() => location.reload(), 3000); 
+                } else {
+                    const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const s = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                    // Format to show 03h : 05m : 09s
+                    document.getElementById('maint-timer').innerText = 
+                        (h < 10 ? "0"+h : h) + "h : " + 
+                        (m < 10 ? "0"+m : m) + "m : " + 
+                        (s < 10 ? "0"+s : s) + "s";
+                }
+            }, 1000);
+        }
+    });
+}
+// =========================================================
+
 const SUPABASE_URL = "https://mhhltddsfzfpixdupblq.supabase.co"; 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oaGx0ZGRzZnpmcGl4ZHVwYmxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4ODEzMjEsImV4cCI6MjA4NzQ1NzMyMX0.eB2FM0yaTUCFdyug3FLug6GRI0H_uQhBa8-DWSCdh6c"; 
 const PAYSTACK_PUBLIC_KEY = "pk_test_YOUR_PAYSTACK_KEY"; 
@@ -130,3 +192,48 @@ function botFinalize(type) {
         document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
     }, 600);
 }
+
+// --- ARCHIVE RESULTS LOGIC ---
+        let viewingArchive = false;
+
+        async function loadSubmissions(showArchived) {
+            allSubs = [];
+            const { data: subs } = await supabaseClient.from('submissions').select('*, students(index_number), exams(title, courses(course_code, school_id))').eq('is_archived', showArchived);
+            const subBody = document.getElementById('admin-subs');
+            subBody.innerHTML = '';
+            
+            if(subs && subs.length > 0) {
+                subs.filter(s => s.exams.courses.school_id == school.id).forEach(s => { 
+                    allSubs.push(s); 
+                    let dateStr = new Date(s.submitted_at).toLocaleDateString();
+                    subBody.innerHTML += `<tr><td>${s.students.index_number}</td><td>${s.exams.courses.course_code}</td><td>${s.exams.title}</td><td>${s.score}/${s.max_score}</td><td><strong style="color:${showArchived ? '#ccc' : '#1dd1a1'};">${s.grade}</strong></td><td>${dateStr}</td></tr>`; 
+                });
+            } else {
+                subBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ccc;">No ${showArchived ? 'archived' : 'active'} results found.</td></tr>`;
+            }
+        }
+
+        function toggleArchiveView() {
+            viewingArchive = !viewingArchive;
+            const btn = document.getElementById('btn-view-archive');
+            const title = document.getElementById('results-title');
+            
+            if(viewingArchive) {
+                btn.innerText = "🔙 Back to Active";
+                title.innerText = "📦 Archived Emergency Results";
+                loadSubmissions(true);
+            } else {
+                btn.innerText = "👁️ View Archived";
+                title.innerText = "📊 Active Student Results";
+                loadSubmissions(false);
+            }
+        }
+
+        async function archiveAll() {
+            if(confirm("Are you sure you want to clear the dashboard? This will move all current results to the Archive.")) {
+                // Update all active submissions to archived
+                await supabaseClient.from('submissions').update({ is_archived: true }).eq('is_archived', false);
+                alert("Dashboard Cleared! Results moved to Emergency Archive.");
+                location.reload();
+            }
+        }
